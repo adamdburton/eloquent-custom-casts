@@ -1,6 +1,6 @@
 {
     "name": "adamdburton/eloquent-custom-casts",
-    "description": "Adds casting of model attributes to any.",
+    "description": "Simple custom class attribute casting for Eloquent models.",
     "autoload": {
         "psr-4": {
             "AdamDBurton\\EloquentCustomCasts\\": "src/"
