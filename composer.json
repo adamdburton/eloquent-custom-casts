@@ -1,0 +1,13 @@
+{
+    "name": "adamdburton/eloquent-custom-casts",
+    "description": "Adds casting of model attributes to any.",
+    "autoload": {
+        "psr-4": {
+            "AdamDBurton\\EloquentCustomCasts\\": "src/"
+        }
+    },
+    "require": {
+        "illuminate/support": "^5.5"
+    },
+    "license": "MIT"
+}
