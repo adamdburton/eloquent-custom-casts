@@ -6,67 +6,78 @@ use Illuminate\Database\Eloquent\Model;
 
 trait HasCustomCasts
 {
-	public static function bootHasCustomCasts()
+	public function getAttribute($key)
 	{
-		static::retrieved(function(Model $model)
+		$casts = $this->getCasts();
+
+		if(isset($casts[$key]) && class_exists($casts[$key]))
 		{
-			foreach($model->getCasts() as $field => $class)
+			$class = $casts[$key];
+			$value = $this->attributes[$key];
+
+			if($value)
 			{
-				if(class_exists($class))
+				if(is_object($value) && is_subclass_of($value, $class))
 				{
-					$model->addCustomCast($field, $class);
+					return $value; // Already the right class, let it through
+				}
+
+				$json = @json_decode($value);
+
+				if(json_last_error() == JSON_ERROR_NONE)
+				{
+					$obj = new $class;
+					$obj->restoring($json);
+
+					return $obj; // Encoded version of the class
+				}
+				else
+				{
+					$obj = new $class;
+					$obj->creating($value);
+
+					return $obj; // We got some other value, pass it to a new instance of the class
 				}
 			}
-		});
-
-		static::saving(function(Model $model)
-		{
-			$dirty = $model->getDirty();
-
-			foreach($model->getCustomCasts() as $key => $class)
+			else
 			{
-				$model->setAttribute($key, serialize($dirty[$key]));
+				return new $class; // No value, pass it as a new instance of the class
 			}
-		});
-	}
-
-	public function addCustomCast($key, $class)
-	{
-		if(!isset($this->customCasts))
-		{
-			$this->customCasts = [];
 		}
 
-		$this->customCasts[$key] = $class;
+		// Pass back to the parent to deal with!
 
-		return $this;
+		return parent::getAttribute($key);
 	}
 
-	public function removeCustomCast($key)
+	public function setAttribute($key, $value)
 	{
-		if(!isset($this->customCasts))
+		$casts = $this->getCasts();
+
+		if(isset($casts[$key]) && class_exists($casts[$key]))
 		{
-			$this->customCasts = [];
+			// Check if the value being set as this attribute is already the class we expect
+			// and if so, replace it, otherwise, pass the value to a new instance of it
+
+			$class = $casts[$key];
+
+			if(is_subclass_of($value, $class))
+			{
+				$this->attributes[$key] = $value;
+
+				return $this;
+			}
+			else
+			{
+				$obj = new $class();
+				$obj->creating($value);
+
+				$this->attributes[$key] = $obj;
+
+				return $this;
+			}
 		}
 
-		unset($this->customCasts[$key]);
-	}
-
-	public function getCustomCasts()
-	{
-		return $this->customCasts ?? [];
-	}
-
-	public function getAttributeValue($key)
-	{
-		if(isset($this->customCasts[$key]))
-		{
-			$value = $this->attributes[$key];
-			$class = $this->customCasts[$key];
-
-			return $value ? unserialize($this->attributes[$key]) : new $class;
-		}
-
-		return parent::getAttributeValue($key);
+		return parent::setAttribute($key, $value);
 	}
 }
