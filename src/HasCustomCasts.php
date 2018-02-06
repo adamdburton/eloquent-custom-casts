@@ -6,78 +6,47 @@ use Illuminate\Database\Eloquent\Model;
 
 trait HasCustomCasts
 {
-	public function getAttribute($key)
+	public static function bootHasCustomCasts()
 	{
-		$casts = $this->getCasts();
-
-		if(isset($casts[$key]) && class_exists($casts[$key]))
+		static::retrieved(function(Model $model)
 		{
-			$class = $casts[$key];
-			$value = $this->attributes[$key];
+			$model->castCustomAttributes();
+		});
 
-			if($value)
-			{
-				if(is_object($value) && is_subclass_of($value, $class))
-				{
-					return $value; // Already the right class, let it through
-				}
+		static::saving(function(Model $model)
+		{
+			$original = $model->getOriginal('image');
+			$attribute = $model->getAttribute('image');
+			$same = $original === $attribute;
 
-				$json = @json_decode($value);
+			var_dump($original);
+			var_dump($attribute);
+			die('Image attributes are ' . ($same ? '' : 'not ') . 'the same!');
 
-				if(json_last_error() == JSON_ERROR_NONE)
-				{
-					$obj = new $class;
-					$obj->restoring($json);
-
-					return $obj; // Encoded version of the class
-				}
-				else
-				{
-					$obj = new $class;
-					$obj->creating($value);
-
-					return $obj; // We got some other value, pass it to a new instance of the class
-				}
-			}
-			else
-			{
-				return new $class; // No value, pass it as a new instance of the class
-			}
-		}
-
-		// Pass back to the parent to deal with!
-
-		return parent::getAttribute($key);
+		});
 	}
 
-	public function setAttribute($key, $value)
+	public function castCustomAttributes()
 	{
 		$casts = $this->getCasts();
 
-		if(isset($casts[$key]) && class_exists($casts[$key]))
+		foreach($casts as $key => $class)
 		{
-			// Check if the value being set as this attribute is already the class we expect
-			// and if so, replace it, otherwise, pass the value to a new instance of it
-
-			$class = $casts[$key];
-
-			if(is_subclass_of($value, $class))
+			if(class_exists($class))
 			{
-				$this->attributes[$key] = $value;
+				$value = $this->attributes[$key];
 
-				return $this;
-			}
-			else
-			{
-				$obj = new $class();
-				$obj->creating($value);
+				$instance = new $class;
 
-				$this->attributes[$key] = $obj;
+				if($value)
+				{
+					$value = json_decode($value);
+					$instance->restoring($value);
+				}
 
-				return $this;
+				$this->original[$key] = $instance;
+				$this->attributes[$key] = clone($instance);
 			}
 		}
-
-		return parent::setAttribute($key, $value);
 	}
 }

@@ -6,8 +6,16 @@
             "AdamDBurton\\EloquentCustomCasts\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "AdamDBurton\\EloquentCustomCasts\\Test\\": "tests/"
+        }
+    },
     "require": {
         "illuminate/support": "^5.5"
     },
-    "license": "MIT"
+    "license": "MIT",
+    "require-dev": {
+        "orchestra/testbench": "~3.0"
+    }
 }
